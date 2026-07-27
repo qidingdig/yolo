@@ -6,7 +6,9 @@
 **项目主页：** http://pjreddie.com/yolo/  
 **原文链接：** https://arxiv.org/abs/1506.02640  
 
-> 说明：本文为便于调研阅读的中文译本；公式按原文保留并以 LaTeX 呈现；图表说明已译，表格数据与原文一致。参考文献条目保留原文信息以便检索。
+> 说明：本文为便于调研阅读的中文译本。  
+> **公式查看方式：** 请打开本文件后使用 Markdown 预览（GitHub 点文件右上角，或本地 VS Code / Typora 预览）。`Files changed` 的 diff 页面不会渲染公式，只会显示源码。  
+> 公式使用 GitHub 兼容的 `$$...$$` / `$...$` 写法。
 
 ---
 
@@ -28,7 +30,7 @@
 
 我们把目标检测重塑为一个单一的回归问题：直接从图像像素到边界框坐标与类别概率。使用我们的系统，你只需“看一次”（You Only Look Once, YOLO）图像，就能预测其中有什么物体以及它们在哪里。
 
-**图 1：YOLO 检测系统。** 用 YOLO 处理图像简单直接。我们的系统：(1) 将输入图像缩放到 \(448\times 448\)；(2) 在图像上运行单个卷积网络；(3) 按模型置信度对检测结果做阈值过滤。
+**图 1：YOLO 检测系统。** 用 YOLO 处理图像简单直接。我们的系统：(1) 将输入图像缩放到 $448\times 448$；(2) 在图像上运行单个卷积网络；(3) 按模型置信度对检测结果做阈值过滤。
 
 YOLO 令人耳目一新地简单，见图 1。单个卷积网络同时预测多个边界框以及这些框的类别概率。YOLO 在整幅图像上训练，并直接优化检测性能。这一统一模型相较传统目标检测方法有若干优势。
 
@@ -48,143 +50,185 @@ YOLO 在精度上仍落后于最先进的检测系统。虽然它能快速识别
 
 我们将目标检测的各个独立组件统一到单个神经网络中。我们的网络利用整幅图像的特征来预测每一个边界框，并同时预测一幅图像中所有类别的全部边界框。这意味着网络会对整幅图像及其中所有物体进行全局推理。YOLO 的设计使得端到端训练与实时速度成为可能，同时保持较高的平均精度。
 
-我们的系统将输入图像划分为 \(S \times S\) 网格。若某个物体的中心落入某个网格单元，则该网格单元负责检测该物体。
+我们的系统将输入图像划分为 $S \times S$ 网格。若某个物体的中心落入某个网格单元，则该网格单元负责检测该物体。
 
-每个网格单元预测 \(B\) 个边界框以及这些框的置信度分数。这些置信度反映模型对“该框是否包含物体”以及“该框预测有多准确”的把握。形式上，我们将置信度定义为：
+每个网格单元预测 $B$ 个边界框以及这些框的置信度分数。这些置信度反映模型对“该框是否包含物体”以及“该框预测有多准确”的把握。形式上，我们将置信度定义为：
 
-\[
-\Pr(\mathrm{Object}) \times \mathrm{IOU}_{\mathrm{pred}}^{\mathrm{truth}}
-\]
+$$
+\mathrm{confidence}
+=
+\Pr(\mathrm{Object})
+\times
+\mathrm{IOU}^{\mathrm{truth}}_{\mathrm{pred}}
+$$
 
 如果该单元中不存在物体，则置信度分数应为零；否则，我们希望置信度等于预测框与真实框之间的交并比（IOU）。
 
-每个边界框由 5 个预测组成：\(x,\ y,\ w,\ h\) 以及 confidence。其中 \((x,y)\) 表示框中心相对于网格单元边界的坐标；宽度和高度相对于整幅图像预测；最终的置信度预测表示预测框与任意真实框之间的 IOU。
+每个边界框由 5 个预测组成：$x$、$y$、$w$、$h$ 以及 confidence。其中 $(x,y)$ 表示框中心相对于网格单元边界的坐标；宽度和高度相对于整幅图像预测；最终的置信度预测表示预测框与任意真实框之间的 IOU。
 
-每个网格单元还预测 \(C\) 个条件类别概率 \(\Pr(\mathrm{Class}_i \mid \mathrm{Object})\)。这些概率以“该网格单元包含物体”为条件。无论边界框数量 \(B\) 是多少，我们每个网格单元只预测一组类别概率。
+每个网格单元还预测 $C$ 个条件类别概率 $\Pr(\mathrm{Class}_i\mid\mathrm{Object})$。这些概率以“该网格单元包含物体”为条件。无论边界框数量 $B$ 是多少，我们每个网格单元只预测一组类别概率。
 
-测试时，我们将条件类别概率与各个框的置信度预测相乘：
+测试时，我们将条件类别概率与各个框的置信度预测相乘，得到**公式 (1)**：
 
-\[
-\begin{equation}
-\begin{aligned}
-&\Pr(\mathrm{Class}_i \mid \mathrm{Object}) \times \Pr(\mathrm{Object}) \times \mathrm{IOU}_{\mathrm{pred}}^{\mathrm{truth}} \\
-&= \Pr(\mathrm{Class}_i) \times \mathrm{IOU}_{\mathrm{pred}}^{\mathrm{truth}}
-\end{aligned}
-\tag{1}
-\end{equation}
-\]
+$$
+\Pr(\mathrm{Class}_i\mid\mathrm{Object})
+\times
+\Pr(\mathrm{Object})
+\times
+\mathrm{IOU}^{\mathrm{truth}}_{\mathrm{pred}}
+=
+\Pr(\mathrm{Class}_i)
+\times
+\mathrm{IOU}^{\mathrm{truth}}_{\mathrm{pred}}
+$$
 
 从而得到每个框的类别相关置信度分数。这些分数同时编码了“该类别出现在框中的概率”以及“预测框与物体的贴合程度”。
 
-**图 2：模型示意。** 我们的系统将检测建模为回归问题。它将图像划分为 \(S\times S\) 网格，并对每个网格单元预测 \(B\) 个边界框、这些框的置信度以及 \(C\) 个类别概率。这些预测被编码为一个 \(S\times S\times (B\cdot 5 + C)\) 张量。
+**图 2：模型示意。** 我们的系统将检测建模为回归问题。它将图像划分为 $S\times S$ 网格，并对每个网格单元预测 $B$ 个边界框、这些框的置信度以及 $C$ 个类别概率。这些预测被编码为一个 $S\times S\times(B\cdot 5+C)$ 张量。
 
-在 Pascal VOC 上评估 YOLO 时，我们取 \(S=7\)，\(B=2\)。Pascal VOC 有 20 个标注类别，因此 \(C=20\)。最终预测是一个 \(7\times 7\times 30\) 张量。
+在 Pascal VOC 上评估 YOLO 时，我们取 $S=7$，$B=2$。Pascal VOC 有 20 个标注类别，因此 $C=20$。最终预测是一个 $7\times 7\times 30$ 张量。
 
 ### 2.1 网络设计
 
-**图 3：网络结构。** 我们的检测网络包含 24 个卷积层，后接 2 个全连接层。交替使用的 \(1\times 1\) 卷积层用于降低前层特征空间维度。我们先在 ImageNet 分类任务上以一半分辨率（\(224\times 224\) 输入）预训练卷积层，再将分辨率加倍用于检测。
+**图 3：网络结构。** 我们的检测网络包含 24 个卷积层，后接 2 个全连接层。交替使用的 $1\times 1$ 卷积层用于降低前层特征空间维度。我们先在 ImageNet 分类任务上以一半分辨率（$224\times 224$ 输入）预训练卷积层，再将分辨率加倍用于检测。
 
 我们将该模型实现为卷积神经网络，并在 Pascal VOC 检测数据集上评估 [9]。网络的前部卷积层提取图像特征，全连接层则预测输出概率与坐标。
 
-我们的网络结构受用于图像分类的 GoogLeNet 启发 [34]。网络包含 24 个卷积层，后接 2 个全连接层。我们不使用 GoogLeNet 中的 Inception 模块，而是简单采用 \(1\times 1\) 降维层后接 \(3\times 3\) 卷积层，类似于 Lin 等人的做法 [22]。完整网络见图 3。
+我们的网络结构受用于图像分类的 GoogLeNet 启发 [34]。网络包含 24 个卷积层，后接 2 个全连接层。我们不使用 GoogLeNet 中的 Inception 模块，而是简单采用 $1\times 1$ 降维层后接 $3\times 3$ 卷积层，类似于 Lin 等人的做法 [22]。完整网络见图 3。
 
 我们还训练了一个快速版 YOLO，以挑战快速目标检测的极限。Fast YOLO 使用更少卷积层（9 层而非 24 层），且这些层中的滤波器更少。除网络规模外，YOLO 与 Fast YOLO 的训练和测试参数完全相同。
 
-网络最终输出为 \(7\times 7\times 30\) 的预测张量。
+网络最终输出为 $7\times 7\times 30$ 的预测张量。
 
 ### 2.2 训练
 
 我们在 ImageNet 1000 类竞赛数据集上预训练卷积层 [30]。预训练时，使用图 3 中的前 20 个卷积层，后接一个平均池化层和一个全连接层。我们训练约一周，在 ImageNet 2012 验证集上获得单裁剪 top-5 准确率 88%，与 Caffe Model Zoo 中的 GoogLeNet 模型相当 [24]。所有训练与推理均使用 Darknet 框架 [26]。
 
-随后我们将模型转换为执行检测。Ren 等人表明，在预训练网络上同时增加卷积层与全连接层可以提升性能 [29]。遵循其做法，我们增加 4 个卷积层和 2 个随机初始化的全连接层。检测通常需要更细粒度的视觉信息，因此我们将网络输入分辨率从 \(224\times 224\) 提升到 \(448\times 448\)。
+随后我们将模型转换为执行检测。Ren 等人表明，在预训练网络上同时增加卷积层与全连接层可以提升性能 [29]。遵循其做法，我们增加 4 个卷积层和 2 个随机初始化的全连接层。检测通常需要更细粒度的视觉信息，因此我们将网络输入分辨率从 $224\times 224$ 提升到 $448\times 448$。
 
-最后一层同时预测类别概率与边界框坐标。我们将边界框宽高按图像宽高归一化，使其落在 \(0\) 到 \(1\) 之间；并将边界框的 \(x\) 与 \(y\) 参数化为相对某网格单元位置的偏移，因此它们也落在 \(0\) 到 \(1\) 之间。
+最后一层同时预测类别概率与边界框坐标。我们将边界框宽高按图像宽高归一化，使其落在 $0$ 到 $1$ 之间；并将边界框的 $x$ 与 $y$ 参数化为相对某网格单元位置的偏移，因此它们也落在 $0$ 到 $1$ 之间。
 
-最后一层使用线性激活函数，其余各层使用如下 leaky ReLU 激活：
+最后一层使用线性激活函数，其余各层使用如下 leaky ReLU 激活，即**公式 (2)**：
 
-\[
-\begin{equation}
+$$
 \phi(x)=
 \begin{cases}
-x, & \text{if } x > 0 \\
+x, & x>0 \\
 0.1x, & \text{otherwise}
 \end{cases}
-\tag{2}
-\end{equation}
-\]
+$$
 
 我们对模型输出优化平方和误差（sum-squared error）。之所以使用平方和误差，是因为它易于优化；但它并不完美对齐“最大化平均精度”的目标。它把定位误差与分类误差同等加权，这未必理想。此外，每张图像中许多网格单元并不包含任何物体，这会把这些单元的 “confidence” 分数推向零，常常压过含有物体的单元所产生的梯度，从而导致模型不稳定，甚至在训练早期发散。
 
-为缓解该问题，我们增大边界框坐标预测的损失，并减小“不含物体的框”的置信度损失。为此引入两个参数 \(\lambda_{\mathrm{coord}}\) 与 \(\lambda_{\mathrm{noobj}}\)，并设置为：
+为缓解该问题，我们增大边界框坐标预测的损失，并减小“不含物体的框”的置信度损失。为此引入两个参数 $\lambda_{\mathrm{coord}}$ 与 $\lambda_{\mathrm{noobj}}$，并设置为：
 
-\[
-\lambda_{\mathrm{coord}} = 5,\qquad \lambda_{\mathrm{noobj}} = 0.5
-\]
+$$
+\lambda_{\mathrm{coord}}=5,\qquad \lambda_{\mathrm{noobj}}=0.5
+$$
 
 平方和误差还会同等对待大框与小框中的误差。我们的误差度量应体现出：大框中的小偏差通常比小框中的小偏差影响更小。为部分解决这一问题，我们预测边界框宽高的平方根，而不是直接预测宽高本身。
 
 YOLO 在每个网格单元预测多个边界框。训练时，我们只希望一个边界框预测器对每个物体负责。我们根据“当前与真实框 IOU 最高”的原则，把某个预测器指定为对该物体“负责”。这会促使不同边界框预测器产生分工：每个预测器更擅长预测特定尺寸、长宽比或类别的物体，从而提升总体召回率。
 
-训练中我们优化如下多部分损失函数：
+训练中我们优化如下多部分损失函数。为便于阅读，先写成五项之和，即**公式 (3)**：
 
-\[
-\begin{equation}
-\begin{aligned}
-&\lambda_{\mathrm{coord}}
-\sum_{i=0}^{S^{2}}
-\sum_{j=0}^{B}
-\mathbb{1}_{ij}^{\mathrm{obj}}
-\left[
-\left(x_{i}-\hat{x}_{i}\right)^{2}
+$$
+L
+=
+L_{\mathrm{xy}}
 +
-\left(y_{i}-\hat{y}_{i}\right)^{2}
-\right] \\
-&+
+L_{\mathrm{wh}}
++
+L_{\mathrm{obj}}
++
+L_{\mathrm{noobj}}
++
+L_{\mathrm{cls}}
+$$
+
+其中各项分别为：
+
+**中心坐标损失**
+
+$$
+L_{\mathrm{xy}}
+=
 \lambda_{\mathrm{coord}}
 \sum_{i=0}^{S^{2}}
 \sum_{j=0}^{B}
 \mathbb{1}_{ij}^{\mathrm{obj}}
 \left[
-\left(\sqrt{w_{i}}-\sqrt{\hat{w}_{i}}\right)^{2}
+(x_i-\hat{x}_i)^2
 +
-\left(\sqrt{h_{i}}-\sqrt{\hat{h}_{i}}\right)^{2}
-\right] \\
-&+
+(y_i-\hat{y}_i)^2
+\right]
+$$
+
+**宽高损失（对 $\sqrt{w}$、$\sqrt{h}$ 回归）**
+
+$$
+L_{\mathrm{wh}}
+=
+\lambda_{\mathrm{coord}}
 \sum_{i=0}^{S^{2}}
 \sum_{j=0}^{B}
 \mathbb{1}_{ij}^{\mathrm{obj}}
-\left(C_{i}-\hat{C}_{i}\right)^{2} \\
-&+
+\left[
+(\sqrt{w_i}-\sqrt{\hat{w}_i})^2
++
+(\sqrt{h_i}-\sqrt{\hat{h}_i})^2
+\right]
+$$
+
+**有目标置信度损失**
+
+$$
+L_{\mathrm{obj}}
+=
+\sum_{i=0}^{S^{2}}
+\sum_{j=0}^{B}
+\mathbb{1}_{ij}^{\mathrm{obj}}
+(C_i-\hat{C}_i)^2
+$$
+
+**无目标置信度损失**
+
+$$
+L_{\mathrm{noobj}}
+=
 \lambda_{\mathrm{noobj}}
 \sum_{i=0}^{S^{2}}
 \sum_{j=0}^{B}
 \mathbb{1}_{ij}^{\mathrm{noobj}}
-\left(C_{i}-\hat{C}_{i}\right)^{2} \\
-&+
+(C_i-\hat{C}_i)^2
+$$
+
+**分类损失**
+
+$$
+L_{\mathrm{cls}}
+=
 \sum_{i=0}^{S^{2}}
 \mathbb{1}_{i}^{\mathrm{obj}}
-\sum_{c \in \mathrm{classes}}
-\left(p_{i}(c)-\hat{p}_{i}(c)\right)^{2}
-\end{aligned}
-\tag{3}
-\end{equation}
-\]
+\sum_{c\in\mathrm{classes}}
+\left(p_i(c)-\hat{p}_i(c)\right)^2
+$$
 
-其中，\(\mathbb{1}_{i}^{\mathrm{obj}}\) 表示物体是否出现在第 \(i\) 个网格单元中；\(\mathbb{1}_{ij}^{\mathrm{obj}}\) 表示第 \(i\) 个单元中的第 \(j\) 个边界框预测器对该预测“负责”。
+其中，$\mathbb{1}_{i}^{\mathrm{obj}}$ 表示物体是否出现在第 $i$ 个网格单元中；$\mathbb{1}_{ij}^{\mathrm{obj}}$ 表示第 $i$ 个单元中的第 $j$ 个边界框预测器对该预测“负责”。
 
 注意：损失函数仅在该网格单元存在物体时惩罚分类误差（这也对应前文所述条件类别概率）；并且仅当某个预测器对真实框“负责”（即在该单元所有预测器中 IOU 最高）时，才惩罚边界框坐标误差。
 
-我们在 Pascal VOC 2007 与 2012 的训练与验证集上大约训练 135 个 epoch。在 2012 测试时，训练还会加入 VOC 2007 测试数据。训练全程使用 batch size \(64\)，动量 \(0.9\)，衰减 \(0.0005\)。
+我们在 Pascal VOC 2007 与 2012 的训练与验证集上大约训练 135 个 epoch。在 2012 测试时，训练还会加入 VOC 2007 测试数据。训练全程使用 batch size $64$，动量 $0.9$，衰减 $0.0005$。
 
-学习率日程如下：最初若干 epoch 将学习率从 \(10^{-3}\) 缓慢提升到 \(10^{-2}\)。若一开始就使用高学习率，模型常因梯度不稳定而发散。随后以 \(10^{-2}\) 训练 75 个 epoch，再以 \(10^{-3}\) 训练 30 个 epoch，最后以 \(10^{-4}\) 训练 30 个 epoch。
+学习率日程如下：最初若干 epoch 将学习率从 $10^{-3}$ 缓慢提升到 $10^{-2}$。若一开始就使用高学习率，模型常因梯度不稳定而发散。随后以 $10^{-2}$ 训练 75 个 epoch，再以 $10^{-3}$ 训练 30 个 epoch，最后以 $10^{-4}$ 训练 30 个 epoch。
 
-为避免过拟合，我们使用 dropout 与大量数据增强。在第一个全连接层后加入比率为 \(0.5\) 的 dropout，以防止层间共适应 [18]。数据增强方面，引入最高达原图尺寸 \(20\%\) 的随机缩放与平移；并在 HSV 颜色空间中将曝光与饱和度随机调整到最高 \(1.5\) 倍。
+为避免过拟合，我们使用 dropout 与大量数据增强。在第一个全连接层后加入比率为 $0.5$ 的 dropout，以防止层间共适应 [18]。数据增强方面，引入最高达原图尺寸 $20\%$ 的随机缩放与平移；并在 HSV 颜色空间中将曝光与饱和度随机调整到最高 $1.5$ 倍。
 
 ### 2.3 推理
 
 与训练一样，对测试图像预测检测结果只需一次网络前向。在 Pascal VOC 上，网络每张图像预测 98 个边界框及每个框的类别概率。由于只需单次网络评估，YOLO 在测试时极快，这与基于分类器的方法不同。
 
-网格设计强制边界框预测具有空间多样性。通常可以清楚地判断物体落入哪个网格单元，网络也往往为每个物体只预测一个框。然而，某些大物体或靠近多个单元边界的物体，可能被多个单元较好定位。可用非极大值抑制（NMS）处理这些重复检测。虽然它对性能的关键程度不如在 R-CNN 或 DPM 中那么高，但 NMS 仍可带来约 \(2\%\)–\(3\%\) 的 mAP 提升。
+网格设计强制边界框预测具有空间多样性。通常可以清楚地判断物体落入哪个网格单元，网络也往往为每个物体只预测一个框。然而，某些大物体或靠近多个单元边界的物体，可能被多个单元较好定位。可用非极大值抑制（NMS）处理这些重复检测。虽然它对性能的关键程度不如在 R-CNN 或 DPM 中那么高，但 NMS 仍可带来约 $2\%$–$3\%$ 的 mAP 提升。
 
 ### 2.4 YOLO 的局限
 
@@ -228,7 +272,7 @@ YOLO 并不试图优化大型检测流水线中的各个组件，而是直接抛
 
 ### 4.1 与其他实时系统的比较
 
-许多目标检测研究聚焦于加速标准检测流水线 [5][38][31][14][17][28]。然而，真正做出实时（\(\ge 30\) FPS）检测系统的，只有 Sadeghi 等人 [31]。我们将 YOLO 与其 GPU 版 DPM（30Hz 或 100Hz）比较。对尚未达到实时门槛的其他方法，我们也比较相对 mAP 与速度，以考察目标检测中可用的精度–性能权衡。
+许多目标检测研究聚焦于加速标准检测流水线 [5][38][31][14][17][28]。然而，真正做出实时（$\ge 30$ FPS）检测系统的，只有 Sadeghi 等人 [31]。我们将 YOLO 与其 GPU 版 DPM（30Hz 或 100Hz）比较。对尚未达到实时门槛的其他方法，我们也比较相对 mAP 与速度，以考察目标检测中可用的精度–性能权衡。
 
 **表 1：Pascal VOC 2007 上的实时系统。** 比较快速检测器的性能与速度。Fast YOLO 是 Pascal VOC 检测记录中最快的检测器，且仍比任何其他实时检测器准确约两倍。YOLO 比快速版高约 10 mAP，同时速度仍明显高于实时要求。
 
@@ -246,7 +290,7 @@ YOLO 并不试图优化大型检测流水线中的各个组件，而是直接抛
 | Faster R-CNN ZF [28] | 2007+2012 | 62.1 | 18 |
 | YOLO VGG-16 | 2007+2012 | 66.4 | 21 |
 
-就我们所知，Fast YOLO 是 Pascal 上最快的目标检测方法，也是现存最快的目标检测器。其 mAP 为 \(52.7\%\)，超过此前实时检测工作两倍以上。YOLO 将 mAP 推到 \(63.4\%\)，同时仍保持实时性能。
+就我们所知，Fast YOLO 是 Pascal 上最快的目标检测方法，也是现存最快的目标检测器。其 mAP 为 $52.7\%$，超过此前实时检测工作两倍以上。YOLO 将 mAP 推到 $63.4\%$，同时仍保持实时性能。
 
 我们也用 VGG-16 训练了 YOLO。该模型更准，但明显更慢。它便于与依赖 VGG-16 的其他检测系统比较；但由于慢于实时，后文仍聚焦我们的更快模型。
 
@@ -254,7 +298,7 @@ Fastest DPM 在不明显牺牲 mAP 的情况下有效加速了 DPM，但仍以�
 
 R-CNN Minus R 用静态边界框提议替换 Selective Search [20]。它比 R-CNN 快很多，但仍达不到实时，且因缺少优质提议而精度显著下降。
 
-Fast R-CNN 加速了 R-CNN 的分类阶段，但仍依赖 Selective Search，后者生成边界框提议大约需要每图 2 秒。因此它 mAP 很高，但 \(0.5\) FPS 远非实时。
+Fast R-CNN 加速了 R-CNN 的分类阶段，但仍依赖 Selective Search，后者生成边界框提议大约需要每图 2 秒。因此它 mAP 很高，但 $0.5$ FPS 远非实时。
 
 最近的 Faster R-CNN 用神经网络代替 Selective Search 来提议边界框，类似于 Szegedy 等人的做法 [8]。在我们的测试中，其最准模型达到 7 FPS，较小、较不准的模型达到 18 FPS。VGG-16 版 Faster R-CNN 比 YOLO 高约 10 mAP，但也慢约 6 倍；Zeiler-Fergus 版 Faster R-CNN 只比 YOLO 慢约 2.5 倍，但精度更低。
 
@@ -262,17 +306,17 @@ Fast R-CNN 加速了 R-CNN 的分类阶段，但仍依赖 Selective Search，后
 
 为进一步考察 YOLO 与最先进检测器的差异，我们对 VOC 2007 结果做详细分解。我们将 YOLO 与 Fast R-CNN 比较，因为 Fast R-CNN 是 Pascal 上表现最好的检测器之一，且其检测结果公开可得。
 
-我们使用 Hoiem 等人的方法与工具 [19]。对每个类别，在测试时查看该类别的前 \(N\) 个预测。每个预测要么正确，要么按错误类型分类：
+我们使用 Hoiem 等人的方法与工具 [19]。对每个类别，在测试时查看该类别的前 $N$ 个预测。每个预测要么正确，要么按错误类型分类：
 
-- **Correct（正确）：** 类别正确且 \(\mathrm{IOU} > 0.5\)
-- **Localization（定位错误）：** 类别正确，且 \(0.1 < \mathrm{IOU} < 0.5\)
-- **Similar（相似类错误）：** 类别相似，且 \(\mathrm{IOU} > 0.1\)
-- **Other（其他错误）：** 类别错误，且 \(\mathrm{IOU} > 0.1\)
-- **Background（背景错误）：** 对任意物体都有 \(\mathrm{IOU} < 0.1\)
+- **Correct（正确）：** 类别正确且 $\mathrm{IOU} > 0.5$
+- **Localization（定位错误）：** 类别正确，且 $0.1 < \mathrm{IOU} < 0.5$
+- **Similar（相似类错误）：** 类别相似，且 $\mathrm{IOU} > 0.1$
+- **Other（其他错误）：** 类别错误，且 $\mathrm{IOU} > 0.1$
+- **Background（背景错误）：** 对任意物体都有 $\mathrm{IOU} < 0.1$
 
-**图 4：错误分析：Fast R-CNN vs. YOLO。** 这些图显示了各类别 top-\(N\) 检测中定位错误与背景错误的比例（\(N =\) 该类别物体数量）。
+**图 4：错误分析：Fast R-CNN vs. YOLO。** 这些图显示了各类别 top-$N$ 检测中定位错误与背景错误的比例（$N =$ 该类别物体数量）。
 
-YOLO 难以正确定位物体。定位错误在 YOLO 的错误中占比超过其余所有来源之和。Fast R-CNN 的定位错误少得多，但背景错误多得多：其 top 检测中有 \(13.6\%\) 是不含任何物体的假阳性。Fast R-CNN 预测背景检测的可能性几乎是 YOLO 的 3 倍。
+YOLO 难以正确定位物体。定位错误在 YOLO 的错误中占比超过其余所有来源之和。Fast R-CNN 的定位错误少得多，但背景错误多得多：其 top 检测中有 $13.6\%$ 是不含任何物体的假阳性。Fast R-CNN 预测背景检测的可能性几乎是 YOLO 的 3 倍。
 
 ### 4.3 结合 Fast R-CNN 与 YOLO
 
@@ -288,7 +332,7 @@ YOLO 的背景错误远少于 Fast R-CNN。用 YOLO 消除 Fast R-CNN 中的背�
 | Fast R-CNN (CaffeNet) | 57.1 | 72.1 | 0.3 |
 | YOLO | 63.4 | 75.0 | 3.2 |
 
-最佳 Fast R-CNN 模型在 VOC 2007 测试集上达到 \(71.8\%\) mAP；与 YOLO 结合后，mAP 提升 \(3.2\%\) 到 \(75.0\%\)。我们也尝试把顶级 Fast R-CNN 与其他几个 Fast R-CNN 版本组合，这些集成仅带来 \(0.3\%\)–\(0.6\%\) 的小幅提升，见表 2。
+最佳 Fast R-CNN 模型在 VOC 2007 测试集上达到 $71.8\%$ mAP；与 YOLO 结合后，mAP 提升 $3.2\%$ 到 $75.0\%$。我们也尝试把顶级 Fast R-CNN 与其他几个 Fast R-CNN 版本组合，这些集成仅带来 $0.3\%$–$0.6\%$ 的小幅提升，见表 2。
 
 来自 YOLO 的提升并非简单模型集成的副产品——因为组合不同版本 Fast R-CNN 收益很小。真正原因是：YOLO 在测试时犯的错误类型不同，因而能有效提升 Fast R-CNN。
 
@@ -296,11 +340,11 @@ YOLO 的背景错误远少于 Fast R-CNN。用 YOLO 消除 Fast R-CNN 中的背�
 
 ### 4.4 VOC 2012 结果
 
-在 VOC 2012 测试集上，YOLO 得到 \(57.9\%\) mAP。这低于当时最先进水平，更接近使用 VGG-16 的原始 R-CNN，见表 3。与最接近的竞争者相比，我们的系统在小物体上更吃力。在 bottle、sheep、tv/monitor 等类别上，YOLO 比 R-CNN 或 Feature Edit 低 \(8\%\)–\(10\%\)；但在 cat、train 等类别上，YOLO 表现更高。
+在 VOC 2012 测试集上，YOLO 得到 $57.9\%$ mAP。这低于当时最先进水平，更接近使用 VGG-16 的原始 R-CNN，见表 3。与最接近的竞争者相比，我们的系统在小物体上更吃力。在 bottle、sheep、tv/monitor 等类别上，YOLO 比 R-CNN 或 Feature Edit 低 $8\%$–$10\%$；但在 cat、train 等类别上，YOLO 表现更高。
 
-我们的 Fast R-CNN + YOLO 组合模型属于表现最高的检测方法之一。Fast R-CNN 因与 YOLO 结合获得 \(2.3\%\) 提升，在公开排行榜上前进 5 位。
+我们的 Fast R-CNN + YOLO 组合模型属于表现最高的检测方法之一。Fast R-CNN 因与 YOLO 结合获得 $2.3\%$ 提升，在公开排行榜上前进 5 位。
 
-**表 3：Pascal VOC 2012 排行榜（部分）。** YOLO 与截至 2015 年 11 月 6 日的完整 comp4（允许外部数据）公开排行榜比较。给出多种检测方法的平均精度均值与逐类平均精度。YOLO 是其中唯一实时检测器。Fast R-CNN + YOLO 是得分第四高的方法，相对 Fast R-CNN 提升 \(2.3\%\)。
+**表 3：Pascal VOC 2012 排行榜（部分）。** YOLO 与截至 2015 年 11 月 6 日的完整 comp4（允许外部数据）公开排行榜比较。给出多种检测方法的平均精度均值与逐类平均精度。YOLO 是其中唯一实时检测器。Fast R-CNN + YOLO 是得分第四高的方法，相对 Fast R-CNN 提升 $2.3\%$。
 
 | VOC 2012 test | mAP | aero | bike | bird | boat | bottle | bus | car | cat | chair | cow | table | dog | horse | mbike | person | plant | sheep | sofa | train | tv |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
@@ -331,9 +375,9 @@ YOLO 的背景错误远少于 Fast R-CNN。用 YOLO 消除 Fast R-CNN 中的背�
 
 **图 5：Picasso 与 People-Art 数据集上的泛化结果。**  
 (a) Picasso 数据集的精确率–召回率曲线。  
-(b) VOC 2007、Picasso 与 People-Art 上的定量结果。Picasso 同时评估 AP 与最佳 \(F_1\)。
+(b) VOC 2007、Picasso 与 People-Art 上的定量结果。Picasso 同时评估 AP 与最佳 $F_1$。
 
-| 方法 | VOC 2007 AP | Picasso AP | Picasso Best \(F_1\) | People-Art AP |
+| 方法 | VOC 2007 AP | Picasso AP | Picasso Best $F_1$ | People-Art AP |
 |---|---:|---:|---:|---:|
 | YOLO | 59.2 | 53.3 | 0.590 | 45 |
 | R-CNN | 54.2 | 10.4 | 0.226 | 26 |
@@ -457,84 +501,114 @@ Fast YOLO 是文献中最快的通用目标检测器，而 YOLO 推动了实时�
 
 **置信度定义**
 
-\[
+$$
 \mathrm{confidence}
 =
 \Pr(\mathrm{Object})
 \times
-\mathrm{IOU}_{\mathrm{pred}}^{\mathrm{truth}}
-\]
+\mathrm{IOU}^{\mathrm{truth}}_{\mathrm{pred}}
+$$
 
-**测试时类别相关分数（公式 1）**
+**公式 (1)：测试时类别相关分数**
 
-\[
-\Pr(\mathrm{Class}_i \mid \mathrm{Object})
+$$
+\Pr(\mathrm{Class}_i\mid\mathrm{Object})
 \times
 \Pr(\mathrm{Object})
 \times
-\mathrm{IOU}_{\mathrm{pred}}^{\mathrm{truth}}
+\mathrm{IOU}^{\mathrm{truth}}_{\mathrm{pred}}
 =
 \Pr(\mathrm{Class}_i)
 \times
-\mathrm{IOU}_{\mathrm{pred}}^{\mathrm{truth}}
-\]
+\mathrm{IOU}^{\mathrm{truth}}_{\mathrm{pred}}
+$$
 
-**Leaky ReLU（公式 2）**
+**公式 (2)：Leaky ReLU**
 
-\[
+$$
 \phi(x)=
 \begin{cases}
 x, & x>0 \\
 0.1x, & \text{otherwise}
 \end{cases}
-\]
+$$
 
-**总损失（公式 3）**
+**公式 (3)：总损失（分项形式）**
 
-\[
-\begin{aligned}
+$$
 L
-&=
-\lambda_{\mathrm{coord}}
-\sum_{i=0}^{S^{2}}
-\sum_{j=0}^{B}
-\mathbb{1}_{ij}^{\mathrm{obj}}
-\left[
-(x_i-\hat x_i)^2+(y_i-\hat y_i)^2
-\right] \\
-&\quad+
-\lambda_{\mathrm{coord}}
-\sum_{i=0}^{S^{2}}
-\sum_{j=0}^{B}
-\mathbb{1}_{ij}^{\mathrm{obj}}
-\left[
-(\sqrt{w_i}-\sqrt{\hat w_i})^2
+=
+L_{\mathrm{xy}}
 +
-(\sqrt{h_i}-\sqrt{\hat h_i})^2
-\right] \\
-&\quad+
+L_{\mathrm{wh}}
++
+L_{\mathrm{obj}}
++
+L_{\mathrm{noobj}}
++
+L_{\mathrm{cls}}
+$$
+
+$$
+L_{\mathrm{xy}}
+=
+\lambda_{\mathrm{coord}}
 \sum_{i=0}^{S^{2}}
 \sum_{j=0}^{B}
 \mathbb{1}_{ij}^{\mathrm{obj}}
-(C_i-\hat C_i)^2 \\
-&\quad+
+\left[
+(x_i-\hat{x}_i)^2
++
+(y_i-\hat{y}_i)^2
+\right]
+$$
+
+$$
+L_{\mathrm{wh}}
+=
+\lambda_{\mathrm{coord}}
+\sum_{i=0}^{S^{2}}
+\sum_{j=0}^{B}
+\mathbb{1}_{ij}^{\mathrm{obj}}
+\left[
+(\sqrt{w_i}-\sqrt{\hat{w}_i})^2
++
+(\sqrt{h_i}-\sqrt{\hat{h}_i})^2
+\right]
+$$
+
+$$
+L_{\mathrm{obj}}
+=
+\sum_{i=0}^{S^{2}}
+\sum_{j=0}^{B}
+\mathbb{1}_{ij}^{\mathrm{obj}}
+(C_i-\hat{C}_i)^2
+$$
+
+$$
+L_{\mathrm{noobj}}
+=
 \lambda_{\mathrm{noobj}}
 \sum_{i=0}^{S^{2}}
 \sum_{j=0}^{B}
 \mathbb{1}_{ij}^{\mathrm{noobj}}
-(C_i-\hat C_i)^2 \\
-&\quad+
+(C_i-\hat{C}_i)^2
+$$
+
+$$
+L_{\mathrm{cls}}
+=
 \sum_{i=0}^{S^{2}}
 \mathbb{1}_{i}^{\mathrm{obj}}
 \sum_{c\in\mathrm{classes}}
-\left(p_i(c)-\hat p_i(c)\right)^2
-\end{aligned}
-\]
+\left(p_i(c)-\hat{p}_i(c)\right)^2
+$$
 
 **VOC 设定下的输出张量**
 
-\[
+$$
 S=7,\quad B=2,\quad C=20
 \quad\Rightarrow\quad
 7\times 7\times 30
-\]
+$$

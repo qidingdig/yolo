@@ -73,15 +73,19 @@
 
 ---
 
-## 交付表格（机制 + ODverse33）
+## 交付表格（机制 + ODverse33 + v12/v13 论文自报）
 
-两表分源存放，勿混排为单一精度总榜：
+分源存放，勿混排为单一精度总榜：
 
 | 交付物 | 路径 |
 |--------|------|
 | 可读版（Markdown） | [`tables/对比表-可读版.md`](tables/对比表-可读版.md) |
 | Excel（对外首选） | [`tables/YOLO对比表.xlsx`](tables/YOLO对比表.xlsx) |
-| CSV | [`tables/表1-机制演进对比.csv`](tables/表1-机制演进对比.csv)、[`tables/表2-ODverse33多域横比.csv`](tables/表2-ODverse33多域横比.csv) |
+| 表1 机制 | [`tables/表1-机制演进对比.csv`](tables/表1-机制演进对比.csv) |
+| 表2 ODverse33 | [`tables/表2-ODverse33多域横比.csv`](tables/表2-ODverse33多域横比.csv) |
+| 表3 v12 论文自报 | [`tables/表3-v12论文COCO自报.csv`](tables/表3-v12论文COCO自报.csv) |
+| 表4 v13 论文自报 | [`tables/表4-v13论文COCO自报.csv`](tables/表4-v13论文COCO自报.csv) |
+| 表3–4 速览 | [`tables/表3-4速览-v11至v13.csv`](tables/表3-4速览-v11至v13.csv) |
 | 使用说明 | [`tables/README.md`](tables/README.md) |
 
 ---
@@ -92,4 +96,5 @@
 - 2026-07-27：改为含义优先，减少绝对数字与硬件名。  
 - 2026-07-27：整体改为更专业表述（如「跨域泛化更稳定」），去掉口语化措辞。  
 - 2026-07-28：新增表1（机制演进）与表2（ODverse33 多域横比）CSV/Excel/可读版。  
-- 2026-07-28：对照表内统一写 **v11**（不再单独写 YOLO11）。
+- 2026-07-28：对照表内统一写 **v11**（不再单独写 YOLO11）。  
+- 2026-07-28：新增表3/表4（v12、v13 论文 COCO 自报）及跨文速览。
